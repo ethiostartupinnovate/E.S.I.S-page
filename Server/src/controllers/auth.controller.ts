@@ -1,20 +1,42 @@
 import type { Request, Response, NextFunction } from 'express';
+import { prismaClient } from '../app.js';
+import { SignUpSchema } from '../schemas/authSchema.js';
+import bcrypt from 'bcryptjs';
 import { BadRequestsException } from '../exceptions/bad-requests.js';
 import { ErrorCode } from '../exceptions/root.js';
 
+export const register = async (req: Request, res: Response) => {
+  const parsed = SignUpSchema.parse(req.body);
 
-export const register = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!email || !password) {
-      throw new BadRequestsException(
-        'Invalid request body',
-        ErrorCode.USER_ALREADY_EXISTS,
-      );
-    }
+  const existingUser = await prismaClient.user.findUnique({
+    where: { email: parsed.email },
+  });
 
-    res.status(201).json({ message: 'User registered', user: { name, email } });
-  } catch (error) {
-    next(error);
+  if (existingUser) {
+    throw new BadRequestsException(
+      'User already exists',
+      ErrorCode.USER_ALREADY_EXISTS,
+    );
   }
+
+  const hashedPassword = await bcrypt.hash(parsed.password, 10);
+
+  const user = await prismaClient.user.create({
+    data: {
+      email: parsed.email,
+      passwordHash: hashedPassword,
+    },
+    include: { profile: true },
+  });
+
+  res.status(201).json({
+    message: 'User registered successfully',
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      profile: user.profile,
+      createdAt: user.createdAt,
+    },
+  });
 };
