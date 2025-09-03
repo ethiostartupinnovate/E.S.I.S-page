@@ -16,39 +16,40 @@ enum Role {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id              String     @id @default(cuid())
-  email           String     @unique
+  id              String    @id @default(cuid())
+  email           String    @unique
   emailVerifiedAt DateTime?
   passwordHash    String
-  role            Role       @default(USER)
+  role            Role      @default(USER)
 
-  profile         Profile?
+  profile Profile?
 
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  isActive Boolean @default(true)
 
   @@index([role])
 }
 
-
 model Profile {
-  id               String             @id @default(cuid())
-  userId           String             @unique
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name             String?
-  phone            String?
-  education        String?            
-  skills           String[]           @default([])  
-  resumeUrl        String?
-  avatarUrl        String?
+  name      String?
+  phone     String?
+  education String?
+  skills    String[] @default([])
+  resumeUrl String?
+  avatarUrl String?
 
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
