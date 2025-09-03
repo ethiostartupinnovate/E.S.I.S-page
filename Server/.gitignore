@@ -5,6 +5,5 @@ node_modules/
 .eslintcache
 
 .env
-.env.*
 
 /src/generated/prisma

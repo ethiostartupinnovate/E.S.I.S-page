@@ -22,16 +22,25 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(cuid())
+  id              Int       @id @default(autoincrement())
   email           String    @unique
   emailVerifiedAt DateTime?
   passwordHash    String
-  role            Role      @default(USER)
-
-  profile Profile?
+  role            UserRole  @default(USER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  profile       Profile?
+  memberships   Membership[]
+  payments      Payment[]
+  internships   InternshipApplication[]
+  startups      Startup[]
+  webinarApps   WebinarApplication[]
+  tickets       Ticket[]
+  projects      Project[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
 
   isActive Boolean @default(true)
 
@@ -39,9 +48,9 @@ model User {
 }
 
 model Profile {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name      String?
   phone     String?
@@ -52,4 +61,186 @@ model Profile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  planId    Int
+  status    String    @default("Active")
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@index([userId, planId])
+  @@map("Memberships")
+}
+
+model Plan {
+  id           Int          @id @default(autoincrement())
+  name         String
+  price        Float
+  billingCycle BillingCycle
+  memberships  Membership[]
+
+  @@map("Plans")
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  currency  String   @default("ETB")
+  status    String   @default("Pending")
+  invoiceNo String   @unique
+  createdAt DateTime @default(now())
+
+  user   User     @relation(fields: [userId], references: [id])
+  ticket Ticket[]
+
+  @@index([userId])
+  @@map("Payments")
+}
+
+model InternshipApplication {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  resume     String?
+  skills     String?
+  motivation String?
+  status     String   @default("Draft")
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@map("InternshipApplications")
+}
+
+model Startup {
+  id       Int     @id @default(autoincrement())
+  userId   Int
+  name     String
+  logo     String?
+  website  String?
+  pitch    String?
+  stage    String?
+  traction String?
+  deck     String?
+  demoLink String?
+  tags     String?
+  status   String  @default("Draft")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@map("Startups")
+}
+
+model Webinar {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  schedule    DateTime
+  capacity    Int?
+  price       Float?
+  status      String   @default("Upcoming")
+
+  applications WebinarApplication[]
+  tickets      Ticket[]
+
+  @@map("Webinars")
+}
+
+model WebinarApplication {
+  id        Int           @id @default(autoincrement())
+  webinarId Int
+  userId    Int
+  status    WebinarStatus @default(Applied)
+  createdAt DateTime      @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([webinarId, userId])
+  @@map("WebinarApplications")
+}
+
+model Ticket {
+  id        Int     @id @default(autoincrement())
+  webinarId Int
+  userId    Int
+  qrCode    String?
+  paymentId Int?
+
+  webinar Webinar  @relation(fields: [webinarId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([webinarId, userId])
+  @@map("Tickets")
+}
+
+model Project {
+  id          Int     @id @default(autoincrement())
+  userId      Int
+  title       String
+  summary     String?
+  description String?
+  teamName    String
+  teamMembers String?
+  tags        String?
+  demoLink    String?
+  status      String  @default("Pending")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@map("Projects")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  message   String
+  isReade   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("Notifications")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("AuditLogs")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MEMBER
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum WebinarStatus {
+  Applied
+  Paid
+  Confirmed
 }
