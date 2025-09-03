@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prismaClient } from '../app.js';
-import { SignUpSchema } from '../schemas/authSchema.js';
+import { LoginSchema, SignUpSchema } from '../schemas/authSchema.js';
 import bcrypt from 'bcryptjs';
 import { BadRequestsException } from '../exceptions/bad-requests.js';
 import { ErrorCode } from '../exceptions/root.js';
@@ -63,10 +63,11 @@ const setCookieConfig = (token: string) => {
 
 const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, role }: { email: string; password: string; role: UserRole } = req.body;
+    const parsed = LoginSchema.parse(req.body);
+    const { role }: { role: UserRole } = req.body;
 
     // Validate required fields
-    if (!email || !password || !role) {
+    if (!parsed.email || !parsed.password || !role) {
       res.status(400).json({
         message: "Email, password, and role are required",
       });
@@ -85,7 +86,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
     // Find user by email and role
     const user = await prismaClient.user.findFirst({
       where: {
-        email: email,
+        email: parsed.email,
         role: role,
         isActive: true,
       },
@@ -99,7 +100,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(parsed.password, user.password);
     if (!isPasswordValid) {
       throw new BadRequestsException(
         "Invalid credentials",
