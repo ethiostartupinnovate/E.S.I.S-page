@@ -1,17 +1,16 @@
-import type { Request, Response, NextFunction } from 'express';
-import { prismaClient } from '../app.js';
-import { LoginSchema, SignUpSchema } from '../schemas/authSchema.js';
 import bcrypt from 'bcryptjs';
+import type { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { prismaClient } from '../app.js';
 import { BadRequestsException } from '../exceptions/bad-requests.js';
 import { ErrorCode } from '../exceptions/root.js';
-import jwt from 'jsonwebtoken'
-
-
+import { LoginSchema, SignUpSchema } from '../schemas/authSchema.js';
 
 // sign up
 const register = async (req: Request, res: Response) => {
   const parsed = SignUpSchema.parse(req.body);
 
+  // Check if user already exists
   const existingUser = await prismaClient.user.findUnique({
     where: { email: parsed.email },
   });
@@ -23,8 +22,10 @@ const register = async (req: Request, res: Response) => {
     );
   }
 
+  // Hash password
   const hashedPassword = await bcrypt.hash(parsed.password, 10);
 
+  // Create user with hashed password
   const user = await prismaClient.user.create({
     data: {
       email: parsed.email,
@@ -45,20 +46,17 @@ const register = async (req: Request, res: Response) => {
   });
 };
 
-
 // login
-type UserRole = "ADMIN" | "MEMBER" | "USER";
+type UserRole = 'ADMIN' | 'MEMBER' | 'USER';
 
-const setCookieConfig = (token: string) => {
-  const isProduction = process.env.NODE_ENV === "production";
-  const cookieConfig = {
+const setCookieConfig = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" as const : "lax" as const,
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   };
-
-  return { cookieConfig };
 };
 
 const login = async (req: Request, res: Response): Promise<void> => {
@@ -69,16 +67,16 @@ const login = async (req: Request, res: Response): Promise<void> => {
     // Validate required fields
     if (!parsed.email || !parsed.password || !role) {
       res.status(400).json({
-        message: "Email, password, and role are required",
+        message: 'Email, password, and role are required',
       });
       return;
     }
 
     // Validate role
-    const allowedRoles: UserRole[] = ["ADMIN", "MEMBER", "USER"];
+    const allowedRoles: UserRole[] = ['ADMIN', 'MEMBER', 'USER'];
     if (!allowedRoles.includes(role)) {
       res.status(400).json({
-        message: "Invalid role",
+        message: 'Invalid role',
       });
       return;
     }
@@ -94,20 +92,23 @@ const login = async (req: Request, res: Response): Promise<void> => {
 
     if (!user) {
       throw new BadRequestsException(
-        'user not found',
-        ErrorCode.USER_NOT_FOUND
-      )
-    }
-
-    // Check password
-    const isPasswordValid = await bcrypt.compare(parsed.password, user.password);
-    if (!isPasswordValid) {
-      throw new BadRequestsException(
-        "Invalid credentials",
-        ErrorCode.INCORRECT_PASSWORD,
+        'User not found',
+        ErrorCode.USER_NOT_FOUND,
       );
     }
 
+    // Check password (fix here ✅)
+    const isPasswordValid = await bcrypt.compare(
+      parsed.password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordValid) {
+      throw new BadRequestsException(
+        'Invalid credentials',
+        ErrorCode.INCORRECT_PASSWORD,
+      );
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -116,27 +117,29 @@ const login = async (req: Request, res: Response): Promise<void> => {
         email: user.email,
         role: user.role,
       },
-      process.env.JWT_SECRET || "secret-key",
-      { expiresIn: "24h" }
+      process.env.JWT_SECRET || 'secret-key',
+      { expiresIn: '24h' },
     );
 
-    // Set cookie using centralized config
-    const { cookieConfig } = setCookieConfig(token);
-    res.cookie("token", token, cookieConfig);
-
+    // Set cookie
+    res.cookie('token', token, setCookieConfig());
 
     res.status(200).json({
-      message: "Login successful",
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      token,
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error('Login error:', error);
     res.status(500).json({
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
 
-
-
-export { register, login };
+export { login, register };
 
