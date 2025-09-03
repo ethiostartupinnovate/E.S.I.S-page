@@ -53,3 +53,62 @@ model Profile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+//INTERNSHIPS AND STARTUPS
+
+enum InternshipStatus {
+  Draft
+  Submitted
+  UnderReview
+  Interview
+  Offer
+  Hired
+  Rejected
+}
+
+enum StartupStatus {
+  Draft
+  Submitted
+  UnderReview
+  Approved
+  ChangesRequested
+  Rejected
+}
+
+model InternshipApplication {
+  id           String           @id @default(cuid())
+  userId       String
+  personal     Json?
+  education    Json?
+  skills       String[]
+  availability String?
+  resumeUrl    String?
+  motivation   String?
+  status       InternshipStatus @default(Draft)
+  reviewerNotes Json?
+  score        Int?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Startup {
+  id        String        @id @default(cuid())
+  userId    String
+  name      String
+  slug      String        @unique
+  logoUrl   String?
+  siteUrl   String?
+  pitch     String?
+  founders  String[]
+  stage     String?
+  traction  String?
+  deckUrl   String?
+  demoLink  String?
+  tags      String[]
+  status    StartupStatus @default(Draft)
+  featured  Boolean       @default(false)
+  country   String?
+  industry  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}

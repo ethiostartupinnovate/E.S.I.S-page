@@ -1,24 +1,31 @@
-import type { Request, Response, NextFunction } from 'express';
-import { HttpException, ErrorCode } from '../exceptions/root.js';
+import type { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
+import { ErrorCode, HttpException } from "../exceptions/root";
+import { InternalException } from "../exceptions/internal-exception";
+import { UnprocessableEntity } from "../exceptions/validation";
 
-export const errorHandler = (
-  error: unknown,
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  if (error instanceof HttpException) {
-    res.status(error.statusCode).json({
-      message: error.message,
-      errorCode: error.errorCode,
-      errors: error.errors,
-    });
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  let exception: HttpException;
+
+  if (err instanceof HttpException) {
+    exception = err;
+  } else if (err instanceof ZodError) {
+    exception = new UnprocessableEntity(
+      "UNPROCESSABLE ENTITY",
+      ErrorCode.UNPROCESSABLE_ENTITY,
+      err.issues
+    );
   } else {
-    console.error(error);
-    res.status(500).json({
-      message: 'Internal Server Error',
-      errorCode: ErrorCode.INTERNAL_EXCEPTION,
-      errors: error instanceof Error ? error.message : error,
-    });
+    exception = new InternalException(
+      "Something went wrong!",
+      ErrorCode.INTERNAL_EXCEPTION,
+      err
+    );
   }
+
+  res.status(exception.statusCode || 500).json({
+    message: exception.message,
+    code: exception.code,
+    details: exception.details || null,
+  });
 };
