@@ -35,5 +35,10 @@ export enum ErrorCode {
 
   // Product errors
   PRODUCT_NOT_FOUND = 5001,
+  
+  // Content errors
+  RESOURCE_NOT_FOUND = 6001,
+  RESOURCE_ALREADY_EXISTS = 6002,
+  FORBIDDEN = 6003,
 }
 

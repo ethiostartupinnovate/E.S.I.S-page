@@ -41,6 +41,7 @@ model User {
   projects      Project[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  articles      Article[]      // Added this line
 
   isActive Boolean @default(true)
 
@@ -184,20 +185,34 @@ model Ticket {
 }
 
 model Project {
-  id          Int     @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   userId      Int
   title       String
+  slug        String        @unique
   summary     String?
   description String?
   teamName    String
   teamMembers String?
-  tags        String?
   demoLink    String?
-  status      String  @default("Pending")
+  repoLink    String?
+  coverImage  String?
+  country     String?
+  stack       String[]      @default([])
+  status      ProjectStatus @default(PENDING)
+  featuredAt  DateTime?
+  submittedAt DateTime?
+  modNotes    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  media       ProjectMedia[]
+  tags        ProjectTag[]
+  flags       ProjectFlag[]
 
   @@index([userId, status])
+  @@index([status, featuredAt])
+  @@index([slug])
   @@map("Projects")
 }
 
@@ -243,4 +258,120 @@ enum WebinarStatus {
   Applied
   Paid
   Confirmed
+}
+
+model Article {
+  id          Int       @id @default(autoincrement())
+  title       String
+  slug        String    @unique
+  content     String
+  summary     String?
+  authorId    Int
+  categoryId  Int?
+  publishedAt DateTime?
+  status      ArticleStatus @default(DRAFT)
+  featuredImage String?
+  metaTitle   String?
+  metaDescription String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  author      User      @relation(fields: [authorId], references: [id])
+  category    Category? @relation(fields: [categoryId], references: [id])
+  tags        ArticleTag[]
+
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@map("Articles")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  
+  articles    Article[]
+
+  @@map("Categories")
+}
+
+model Tag {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  slug        String    @unique
+  
+  articleTags ArticleTag[]
+  projectTags ProjectTag[]
+
+  @@map("Tags")
+}
+
+model ArticleTag {
+  articleId   Int
+  tagId       Int
+
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@map("ArticleTags")
+}
+
+model ProjectTag {
+  projectId   Int
+  tagId       Int
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+  @@map("ProjectTags")
+}
+
+model ProjectMedia {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  url         String
+  type        MediaType @default(IMAGE)
+  createdAt   DateTime  @default(now())
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("ProjectMedia")
+}
+
+model ProjectFlag {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  userId      Int
+  reason      String
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("ProjectFlags")
+}
+
+enum ArticleStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ProjectStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  FEATURED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
 }
