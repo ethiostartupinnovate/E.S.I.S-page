@@ -6,7 +6,7 @@ import {
   createStartup,
   updateStartup,
   submitStartup,
-} from "../controllers/startup.controller";
+} from "../controllers/startup.controller.ts";
 
 const router = Router();
 
