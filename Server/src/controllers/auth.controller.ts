@@ -141,5 +141,14 @@ const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export { login, register };
+// Get current user profile
+const getCurrentUser = async (req: Request, res: Response) => {
+  // req.user is set by the authenticate middleware
+  res.status(200).json({
+    message: 'User profile retrieved successfully',
+    user: req.user
+  });
+};
+
+export { getCurrentUser, login, register };
 
